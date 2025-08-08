@@ -1,40 +1,64 @@
 // add the dependencies
-const express= require('express')
-const bp= require('body-parser')
-const _=require('underscore')
-const app= express()
-app.use(bp.json())
-const userData=[]
-uid=1
+const express = require("express");
+const bp = require("body-parser");
+const _ = require("underscore");
+const app = express();
+app.use(bp.json());
+userData = [];
+uid = 1;
 
-app.get("/welcome",(req,res)=>{
-    res.send('welcome to express')
-})
-app.get('/users',(req,res)=>{
-    res.send(userData)
-})
+app.get("/welcome", (req, res) => {
+  res.send("welcome to express");
+});
+app.get("/users", (req, res) => {
+  res.send(userData);
+});
 
-app.get("/loaduser/:id",(req,res)=>{
-    var todoId= parseInt(req.params.id)
-    var mtd=_.findWhere(userData,{id:todoId})
-    if(mtd){
-        res.send(mtd)
-    }else{
-        res.status(404).send()
-    }
-    
-})
+app.get("/loaduser/:id", (req, res) => {
+  var todoId = parseInt(req.params.id);
+  var mtd = _.findWhere(userData, { id: todoId });
+  if (mtd) {
+    res.send(mtd);
+  } else {
+    res.status(404).send();
+  }
+});
+app.delete("/deleteuser/:id", (req, res) => {
+  var todoId = parseInt(req.params.id);
+  var mtd = _.findWhere(userData, { id: todoId });
+  if (mtd) {
+    userData = _.without(userData, mtd);
+    res.send("record deleted");
+  } else {
+    res.status(404).send();
+  }
+});
 
-app.post('/adduser',(req,res)=>{
-    const dataRecieved=req.body
-    dataRecieved.id=uid++
-    userData.push(dataRecieved)
-     res.send(dataRecieved)
-    
-})
+app.put("/updateuser/:id", (req, res) => {
+  var todoId = parseInt(req.params.id);
+  var mtd = _.findWhere(userData, { id: todoId });
+  if (mtd) {
+    // var body = _.pick(req.body, "userName", "password", "email", "city");
+    var body = req.body;
+    var data = {};
+    data.userName = body.userName;
+    data.password = body.password;
+    data.email = body.email;
+    data.city = body.city;
+    _.extend(mtd, data);
+    res.send(mtd);
+  } else {
+    res.status(404).send();
+  }
+});
 
-app.listen(4000,()=>{
-    console.log('server is ready and  ');
-    
-})
+app.post("/adduser", (req, res) => {
+  const dataRecieved = req.body;
+  dataRecieved.id = uid++;
+  userData.push(dataRecieved);
+  res.send(dataRecieved);
+});
 
+app.listen(4000, () => {
+  console.log("server is ready and  ");
+});
