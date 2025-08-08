@@ -1,18 +1,33 @@
-const jwt = require("jsonwebtoken");
-const config = require("./config.json");
-module.exports = (req, res, next) => {
-  const token = req.headers["x-access-token"];
-  if (token) {
-    jwt.verify(token, config.secret, function (err, decoded) {
-      if (err) {
-        return res
-          .status(401)
-          .json({ error: true, message: "unauthorized access...!" });
-      }
-      req.decoded = decoded;
-      next();
-    });
-  } else {
-    res.status(403).json({ error: true, message: "No Token Found...!" });
-  }
-};
+
+const express= require('express')
+const bp= require('body-parser')
+const jwt= require('jsonwebtoken')
+const config= require('./config.json')
+
+const router= express.Router()
+
+const app=express()
+app.use(bp.json())
+
+router.post('/login',(req,res)=>{
+    postdata=req.body
+    const user={
+        "uname":postdata.uname,
+        "email":postdata.email
+    }
+    const token=jwt.sign(user,config.secret,{expiresIn:config.tokenLife})
+    const response={
+        "status":"Logged In",
+        "token":token
+    }
+    res.send(response)
+})
+router.use(require('./tokenChecker'))
+router.get("/secure",(req,res)=>{
+    res.send('Secured URL is Active')
+})
+app.use('/api',router)
+app.listen(4000,()=>{
+    console.log('server is ready');
+    
+})
