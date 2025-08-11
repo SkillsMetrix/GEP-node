@@ -1,29 +1,87 @@
-const express = require('express')
-const bp = require('body-parser')
-const jwt = require('jsonwebtoken')
-const config = require('./config.json')
-const router = express.Router()
-const app = express()
-app.use(bp.json())
 
-router.post('/login',(req,res)=>{
-    const postdata= req.body
-    const user={
-        "uname":postdata.uname,
-        "email":postdata.email
+class Product{
+    constructor(id,name,price){
+        this.id=id
+        this.name=name
+        this.price=price
     }
-    const token= jwt.sign(user,config.secret,{expiresIn:config.tokenlife})
-    const response={
-        "status":'logged in',
-        "token":token
-    }
-    res.send(response)
-})
-router.use(require('./tokenChecker'))
-router.get('/secure', (req, res) => {
-    res.send('secured URL accessed')
-})
-app.use('/api', router)
-app.listen(4000, () => {
-    console.log('server is ready');
+}
+module.exports=Product
+
+
+-----------
+
+
+const Product= require('../models/Product')
+module.exports ={
+    users:[
+       { id:1,name:"admin",email:"admin@mail.com"},
+        { id:2,name:"manager",email:"manager@mail.com"}
+    ],
+
+products:[
+    new Product(1,"laptop",1000),
+    new Product(2,"mouse",200)
+],
+customers:[
+    {id:1,name:'sam',address:'mumbai'},
+    {id:2,name:'diana',address:'NY'}
+
+]
+
+}
+
+
+
+const db = require("../data/db");
+
+exports.getAllProducts = () => db.products;
+
+exports.createProducts = (product) => {
+  product.id = db.products.length + 1;
+  db.products.push(product);
+  return product;
+};
+
+
+
+------
+
+const ps= require('../services/product.service')
+
+exports.getProducts=(req,res)=>{
+    res.json(ps.getAllProducts())
+}
+
+--------
+
+const express= require('express')
+
+
+const router= express.Router()
+
+
+const productController = require('../controllers/product.controller')
+
+router.get('/',productController.getProducts)
+
+
+module.exports=router
+-----
+
+
+const express= require('express')
+
+const app= express()
+
+app.use(express.json())
+
+
+const productRoutes=require('./routes/product.routes')
+
+app.use('/products',productRoutes)
+
+app.listen(3000,()=>{
+    console.log('server is ready...!');
+    
 })
