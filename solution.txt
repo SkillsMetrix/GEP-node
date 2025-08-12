@@ -1,110 +1,122 @@
-
 // basic types
-let storeName: string = "Super Tech Shop" //string
-let maxCartSize: number = 10 //number
-let isCartActive: boolean = true // boolean
-let discountCode: any = null //can hold any data type
-let emptyValue: void = undefined //for functions
-let nothingHere: null = null
-let notDefined: undefined = undefined
+let storeName: string = "Super Tech Shop"; //string
+let maxCartSize: number = 10; //number
+let isCartActive: boolean = true; // boolean
+let discountCode: any = null; //can hold any data type
+let emptyValue: void = undefined; //for functions
+let nothingHere: null = null;
+let notDefined: undefined = undefined;
 
 // Array And tuples
-let categories: string[] = ["Electronics", "Books", "Clothing"]
+let categories: string[] = ["Electronics", "Books", "Clothing"];
 // tuple
-let productTuple: [number, string] = [101, "Mouse"]
+let productTuple: [number, string] = [101, "Mouse"];
 //Enums
 enum Category {
-    Electronics, Books, Clothing
+  Electronics,
+  Books,
+  Clothing,
 }
 // Interface
 interface Product {
-    id: number
-    name: string
-    price: number
-    category: Category
+  id: number;
+  name: string;
+  price: number;
+  category: Category;
 }
 // functions
-function createProduct(id: number, name: string, price: number, category: Category): Product {
-    return { id, name, price, category }
+function createProduct(
+  id: number,
+  name: string,
+  price: number,
+  category: Category
+): Product {
+  return { id, name, price, category };
 }
 //optional and default para
-function applyDiscount(price: number, discount?: number, tax: number = 0): number {
-    let finalPrice = price
-    if (discount) {
-        finalPrice -= (price * discount) / 100
-    }
-    finalPrice += (finalPrice * tax) / 100
-    return finalPrice
+function applyDiscount(
+  price: number,
+  discount?: number,
+  tax: number = 0
+): number {
+  let finalPrice = price;
+  if (discount) {
+    finalPrice -= (price * discount) / 100;
+  }
+  finalPrice += (finalPrice * tax) / 100;
+  return finalPrice;
 }
 
 //Inventory (Type Inference)
 let inventory = [
-    createProduct(101, "Laptop", 89000, Category.Electronics),
-    createProduct(102, "Book - Learning TS", 100, Category.Books),
-    createProduct(103, "Jeans", 1500, Category.Clothing)
-]
+  createProduct(101, "Laptop", 89000, Category.Electronics),
+  createProduct(102, "Book - Learning TS", 100, Category.Books),
+  createProduct(103, "Jeans", 1500, Category.Clothing),
+];
 // function overloading
 
-function findProductById(id: number): Product | undefined
-function findProductById(id: number, products: Product[]): Product | undefined
-function findProductById(id: number, products?: Product[]): Product | undefined {
-    const searchList = products ?? inventory
-    return searchList.find(p => p.id === id)
+function findProductById(id: number): Product | undefined;
+function findProductById(id: number, products: Product[]): Product | undefined;
+function findProductById(
+  id: number,
+  products?: Product[]
+): Product | undefined {
+  const searchList = products ?? inventory;
+  return searchList.find((p) => p.id === id);
 }
 //OOJS
 
 class ShoppingCart {
-    private items: Product[] = []
-    addItem(product: Product): void {
-        if (this.items.length >= maxCartSize) {
-            console.log("cart is full");
-            return
-        }
-        this.items.push(product)
-        console.log(`${product.name} added to  cart`);
-
+  private items: Product[] = [];
+  addItem(product: Product): void {
+    if (this.items.length >= maxCartSize) {
+      console.log("cart is full");
+      return;
     }
-    removeItem(productId: number): void {
-        this.items = this.items.filter(item => item.id !== productId)
-        console.log(`Product ID ${productId} removed from the cart`);
+    this.items.push(product);
+    console.log(`${product.name} added to  cart`);
+  }
+  removeItem(productId: number): void {
+    this.items = this.items.filter((item) => item.id !== productId);
+    console.log(`Product ID ${productId} removed from the cart`);
+  }
+  getTotalPrice(): number {
+    return this.items.reduce((total, item) => total + item.price, 0);
+  }
+  listItems(): void {
+    console.log("Cart Items...!");
+    this.items.forEach((item) => {
+      console.log(`--${item.name} : $ ${item.price}`);
+    });
+  }
+}
+//assertions
+let totalProducts = inventory.length;
+let firstProductName = (inventory[0].name as string).toUpperCase();
+let secondProductName = ((<string>inventory[1].name) as string).toLowerCase();
 
-    }
-    getTotalPrice(): number {
-        return this.items.reduce((total, item) => total + item.price, 0)
-    }
-    listItems(): void {
-        console.log('Cart Items...!');
-        this.items.forEach(item => {
-            console.log(`--${item.name} : $ ${item.price}`);
+console.log(`Welcome to ${storeName}`);
+console.log(`Store Categories: ${categories.join(", ")}`);
+console.log(`Touples ID ${productTuple[0]},Name=${productTuple[1]}`);
+console.log(`Total Product in Inventory ${totalProducts}`);
+console.log(`First Product in Uppercase: ${firstProductName}`);
+console.log(`Second Product in Lowercase: ${secondProductName}`);
 
-        })
+const myCart = new ShoppingCart();
+let newProduct = createProduct(104, "HeadPhones", 3000, Category.Electronics);
+inventory.push(newProduct);
+console.log("New Products after directly add ", newProduct);
+//add items using class
+myCart.addItem(inventory[0]);
+myCart.addItem(inventory[1]);
+myCart.addItem(newProduct);
+myCart.listItems();
 
-    }
-   
-} 
- //assertions
- let totalProducts= inventory.length
- let firstProductName=(inventory[0].name as string).toUpperCase()
-  let secondProductName=(<string>inventory[1].name as string).toLowerCase()
-
-  console.log(`Welcome to ${storeName}`);
-  console.log(`Store Categories: ${categories.join(", ")}`);
-  console.log(`Touples ID ${productTuple[0]},Name=${productTuple[1]}`);
-  console.log(`Total Product in Inventory ${totalProducts}`);
-  console.log(`First Product in Uppercase: ${firstProductName}`);
-  console.log(`Second Product in Lowercase: ${secondProductName}`);
-
-  const myCart= new ShoppingCart()
-  let newProduct= createProduct(104,"HeadPhones",3000,Category.Electronics)
-  inventory.push(newProduct)
-  console.log("New Products after directly add ",newProduct);
-  //add items using class
-  myCart.addItem(inventory[0])
-   myCart.addItem(inventory[1])
-    myCart.addItem(newProduct)
-    myCart.listItems()
-  
-  
-  
-  
-  
+let totalPrice= myCart.getTotalPrice()
+console.log("Total Price  ",totalPrice);
+// tasks to perform
+// apply discounts (with discount and tax)
+// apply discounts (no discount and tax)
+//find product ID (using default inv)
+//find product ID (using custom list)
+// remove item from cart
