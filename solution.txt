@@ -116,7 +116,21 @@ let totalPrice= myCart.getTotalPrice()
 console.log("Total Price  ",totalPrice);
 // tasks to perform
 // apply discounts (with discount and tax)
+let discountPrice=applyDiscount(totalPrice,10,5)
+console.log("Discounted Price " , discountPrice);
+
 // apply discounts (no discount and tax)
+let taxOnlyPrice=applyDiscount(totalPrice,undefined,5)
+console.log("Price only with TAX " , taxOnlyPrice);
+
 //find product ID (using default inv)
+let foundOne= findProductById(102)
+console.log("Found in default ", foundOne);
+
 //find product ID (using custom list)
+let foundTwo= findProductById(104,[newProduct])
+console.log("Found Custom ", foundTwo);
+
 // remove item from cart
+myCart.removeItem(103)
+myCart.listItems()
