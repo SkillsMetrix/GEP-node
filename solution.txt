@@ -1,16 +1,51 @@
-import mongoose, { Document, Schema } from "mongoose";
+{
+  "name": "01-standard-setup",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "npx ts-node-dev src/main.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/platform-express": "^11.1.6",
+    "reflect-metadata": "^0.2.2",
+    "typescript": "^5.9.2"
+  }
+}
+-----------
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2017",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}
+-----
 
-export interface CartItemDocument extends Document {
-  name: string;
-  price: number;
-  quantity: number;
+import { Controller, Get, Module } from '@nestjs/common'
+import { NestFactory } from '@nestjs/core'
+
+@Controller()
+class AppController{
+@Get()
+showWelcome(){
+    return "welcome to nestJS..!"
 }
 
-const CartItemSchema = new Schema<CartItemDocument>({
-  name: { type: String, required: true },
-  price: { type: Number, required: true },
-  quantity: { type: Number, required: true },
-},
-  {timeStamps:true}
-);
-export default mongoose.model<CartItemDocument>("CartSchema",CartItemSchema)
+}
+@Module({
+    controllers:[AppController]
+})
+class AppModule {}
+async function bootstrap(){
+    const app= await NestFactory.create(AppModule)
+    await app.listen(3000)
+}
+bootstrap()
