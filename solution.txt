@@ -1,85 +1,38 @@
-import { Injectable, Logger, NestMiddleware } from "@nestjs/common";
-import { Response,Request, NextFunction } from "express";
-@Injectable()
-export class LoggerMiddleware implements NestMiddleware{
+import { Controller, All, Param, Req } from '@nestjs/common';
+import { Request } from 'express';
+import axios from 'axios';
 
-    private readonly logger= new Logger('HTTP')
+@Controller('gateway')
+export class GatewayController {
+  private registryUrl = 'http://localhost:4000/registry';
 
-    use(req:Request,res:Response,next: NextFunction) {
-        const {method,originalUrl}=req
-        const start= Date.now()
+  @All(':service/:path*')
+  async forward(
+    @Param('service') service: string,
+    @Param('path') path: string,
+    @Req() req: Request,
+  ) {
+    try {
+      // 🔍 Lookup service in registry
+      const { data: svc } = await axios.get(`${this.registryUrl}/${service}`);
+      if (!svc) {
+        return { error: `Service ${service} not found` };
+      }
 
-        res.on('finish',() => {
-            const {statusCode} =res
-            const duration= Date.now()-start
-            this.logger.log(
-                `${method} ${originalUrl} ${statusCode} - ${duration}ms`
-            )
-        })
-        next()
+      // 🎯 Build target URL
+      const url = `http://${svc.host}:${svc.port}/${service}/${path || ''}`;
+
+      // 🔁 Forward request to discovered service
+      const response = await axios({
+        method: req.method as any,
+        url,
+        data: req.body,
+        params: { ...req.query },  
+      });
+
+      return response.data;
+    } catch (err: any) {
+      return { error: 'Gateway error', details: err.message };
     }
-
-
-
-
-}
------------
-import { MiddlewareConsumer, Module } from '@nestjs/common';
- import { MongooseModule } from '@nestjs/mongoose';
-import { databaseConfig } from './config/database.config';
-import { AppController } from './controller/appcontroller';
-import { ShopService } from './services/ShopCartService';
-import { ShopCart, ShopCartSchema } from './schema/shopcart.schema';
-import { LoggerMiddleware } from './common/middleware/logger.middleware';
-
-@Module({
-  imports: [
-    MongooseModule.forRoot(databaseConfig.mongoURI),
-    MongooseModule.forFeature([{name:ShopCart.name,schema:ShopCartSchema}])
-  ],
-  controllers: [AppController],
-  providers: [ShopService],
-})
-export class AppModule {
-  configre(consumer:MiddlewareConsumer){
-    consumer.apply(LoggerMiddleware).forRoutes(AppController)
   }
-}
-
-------------
-
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from "@nestjs/common";
-import { Request, Response } from "express";
-
-@Catch()
-export class AllExceptions implements ExceptionFilter {
-    private readonly logger = new Logger(AllExceptions.name)
-
-    catch(exception: unknown, host: ArgumentsHost) {
-
-        const ctx = host.switchToHttp()
-        const response = ctx.getResponse<Response>()
-        const request = ctx.getRequest<Request>()
-
-        let status =
-            exception instanceof HttpException
-                ? exception.getStatus()
-                : HttpStatus.INTERNAL_SERVER_ERROR
-        const message =
-            exception instanceof HttpException
-                ? exception.getResponse()
-                : (exception as any).message || 'Internal Server Error'
-
-        this.logger.error(
-            `Status: ${status} | URL: ${request.url} | Message: ${JSON.stringify(
-                message
-            )}`
-        )
-        response.status(status).json({
-            statusCode: status,
-            timeStamp: new Date().toISOString(),
-            path: request.url,
-            message
-        })
-    }
 }
