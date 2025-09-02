@@ -13,16 +13,15 @@ export class GatewayController {
     @Req() req: Request,
   ) {
     try {
-      // 🔍 Lookup service in registry
+   
       const { data: svc } = await axios.get(`${this.registryUrl}/${service}`);
       if (!svc) {
         return { error: `Service ${service} not found` };
       }
-
-      // 🎯 Build target URL
+ 
       const url = `http://${svc.host}:${svc.port}/${service}/${path || ''}`;
 
-      // 🔁 Forward request to discovered service
+ 
       const response = await axios({
         method: req.method as any,
         url,
