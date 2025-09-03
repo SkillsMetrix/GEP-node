@@ -1,52 +1,65 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, All, Param, Req } from '@nestjs/common';
+import { Request } from 'express';
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
-import CircuitBreaker from 'opossum'
+import CircuitBreaker from 'opossum';
 
-
+// Retry config for axios
 axiosRetry(axios, {
   retries: 3,
-  retryDelay: (retryCount) => retryCount * 1000,
-  retryCondition: (error) => {
-    return axiosRetry.isNetworkError(error) || axiosRetry.isRetryableError(error)
-  }
+  retryDelay: (count) => count * 1000, // 1s, 2s, 3s
+  retryCondition: (error) =>
+    axiosRetry.isNetworkError(error) || axiosRetry.isRetryableError(error),
+});
 
-})
-@Controller('customer')
-export class CustomerController {
-  private gatewayUrl = 'http://localhost:3000/gateway';
-  private breaker: CircuitBreaker<[void], any>
+@Controller('gateway')
+export class GatewayController {
+  private registryUrl = 'http://localhost:4000/registry';
+  private breaker: CircuitBreaker<[string, Request], any>;
+
   constructor() {
-    this.breaker = new CircuitBreaker(
-      async () => {
-        const response = await axios.get(`${this.gatewayUrl}/shop/bill`, {
-          params: { item: 'Book', amount: 200 },
-        });
-        return response.data
-      }, {
-      timeout: 5000,
-      errorThresholdPersentage: 50,
-      resetTimeOut: 10000
-    }
+    // Circuit breaker wraps the forward logic
+    this.breaker = new CircuitBreaker<[string, Request], any>(
+      async (service: string, req: Request) => {
+        // 🔍 Lookup service
+        const { data: svc } = await axios.get(`${this.registryUrl}/${service}`);
+        if (!svc) throw new Error(`Service ${service} not found in registry`);
 
-    )
-    this.breaker.on('open', () => console.log('Circuit Open'))
-    this.breaker.on('halfOpen', () => console.log('Circuit half Open'))
-    this.breaker.on('close', () => console.log('Circuit close ,app is healthy'))
+        const path = req.params['path'] || '';
+        const targetUrl = `http://${svc.host}:${svc.port}/${service}/${path}`;
+
+        console.log(` Forwarding ${req.method} ${req.originalUrl} → ${targetUrl}`);
+
+        const response = await axios({
+          method: req.method as any,
+          url: targetUrl,
+          data: req.body,
+          params: { ...req.query },
+        });
+
+        return response.data;
+      },
+      {
+        timeout: 5000, // fail fast if call > 5s
+        errorThresholdPercentage: 50, // open if 50% fail
+        resetTimeout: 10000, // test after 10s
+      },
+    );
+
+    this.breaker.on('open', () => console.warn(' Gateway circuit OPEN'));
+    this.breaker.on('halfOpen', () => console.warn(' Gateway circuit HALF-OPEN'));
+    this.breaker.on('close', () => console.warn(' Gateway circuit CLOSED'));
   }
 
-  @Get('buy')
-  async buy() {
-
+  @All(':service/*path')
+  async forward(@Param('service') service: string, @Req() req: Request) {
     try {
-      const bill = await this.breaker.fire()
-      return { mesage: 'customer purchased Item ', bill }
+      return await this.breaker.fire(service, req);
     } catch (err: any) {
-
       return {
-        message: 'Customer Purchased Item',
-        bill: { error: 'Failed to reach shop service', details: err.message }
-      }
+        error: 'Gateway: service unavailable (circuit open)',
+        details: err.message,
+      };
     }
   }
 }
