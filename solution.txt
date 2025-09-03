@@ -1,37 +1,52 @@
-import { Controller, All, Param, Req } from '@nestjs/common';
-import { Request } from 'express';
+import { Controller, Get } from '@nestjs/common';
 import axios from 'axios';
+import axiosRetry from 'axios-retry';
+import CircuitBreaker from 'opossum'
 
-@Controller('gateway')
-export class GatewayController {
-  private registryUrl = 'http://localhost:4000/registry';
 
-  @All(':service/:path*')
-  async forward(
-    @Param('service') service: string,
-    @Param('path') path: string,
-    @Req() req: Request,
-  ) {
+axiosRetry(axios, {
+  retries: 3,
+  retryDelay: (retryCount) => retryCount * 1000,
+  retryCondition: (error) => {
+    return axiosRetry.isNetworkError(error) || axiosRetry.isRetryableError(error)
+  }
+
+})
+@Controller('customer')
+export class CustomerController {
+  private gatewayUrl = 'http://localhost:3000/gateway';
+  private breaker: CircuitBreaker<[void], any>
+  constructor() {
+    this.breaker = new CircuitBreaker(
+      async () => {
+        const response = await axios.get(`${this.gatewayUrl}/shop/bill`, {
+          params: { item: 'Book', amount: 200 },
+        });
+        return response.data
+      }, {
+      timeout: 5000,
+      errorThresholdPersentage: 50,
+      resetTimeOut: 10000
+    }
+
+    )
+    this.breaker.on('open', () => console.log('Circuit Open'))
+    this.breaker.on('halfOpen', () => console.log('Circuit half Open'))
+    this.breaker.on('close', () => console.log('Circuit close ,app is healthy'))
+  }
+
+  @Get('buy')
+  async buy() {
+
     try {
-   
-      const { data: svc } = await axios.get(`${this.registryUrl}/${service}`);
-      if (!svc) {
-        return { error: `Service ${service} not found` };
-      }
- 
-      const url = `http://${svc.host}:${svc.port}/${service}/${path || ''}`;
-
- 
-      const response = await axios({
-        method: req.method as any,
-        url,
-        data: req.body,
-        params: { ...req.query },  
-      });
-
-      return response.data;
+      const bill = await this.breaker.fire()
+      return { mesage: 'customer purchased Item ', bill }
     } catch (err: any) {
-      return { error: 'Gateway error', details: err.message };
+
+      return {
+        message: 'Customer Purchased Item',
+        bill: { error: 'Failed to reach shop service', details: err.message }
+      }
     }
   }
 }
