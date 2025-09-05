@@ -1,53 +1,46 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
- 
-import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { INestApplication } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import { AppModule } from '../src/app.module';
+import request from 'supertest';
 
+describe('AppController', () => {
+  let app: INestApplication;
 
-@ApiTags('shop')
-@Controller('shop')
-export class AppController {
-  constructor() { }
-
-  @ApiOperation({ summary: 'Create a bill for an item' })
-  @ApiQuery({ name: 'item', required: true, example: 'BOOK' })
-  @ApiQuery({ name: 'amount', required: true, example: '250', description: 'Amount in currency' })
-  @ApiResponse({ status: 200, description: 'Bill Created' })
-  @Get('bill')
-  createBill(@Query('item') item: string, @Query('amount') amount: number) {
-
-    return { shop: 'Shop Service', item, amount, status: 'Billed' }
-
-  }
-}
----------
-
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-
-import axios from 'axios';
-
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-
-  const config = new DocumentBuilder()
-    .setTitle('Shop Service API')
-    .setDescription('Billing endpoints')
-    .setVersion('1.0.0')
-    .addTag('shop')
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
-  const port = 3002;
-  await app.listen(port);
-
-
-  await axios.post('http://localhost:4000/registry/register', {
-    name: 'shop',
-    host: 'localhost',
-    port,
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+    app = moduleRef.createNestApplication();
+    await app.init();
   });
+  afterAll(async () => {
+    await app.close();
+  });
+  it('check the get method', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/shop/bill')
+      .query({ item: 'Book', amount: 200 })
+      .expect(200);
+      expect(res.body).toHaveProperty('shop','Shop Service')
+      expect(res.body).toHaveProperty('item','Book')
+  });
+  it('missing query parameters',async()=>{
+   const res = await request(app.getHttpServer())
+      .get('/shop/bill')
+     
+      .expect(200);
 
-  console.log(` Shop Service http://localhost:${port}`);
-}
-bootstrap();
+      expect(res.body).toHaveProperty('shop','Shop Service')
+      expect(res.body).toHaveProperty('item','Book')
+  })
+
+   it('string amount should be returned',async()=>{
+   const res = await request(app.getHttpServer())
+      .get('/shop/bill')
+      .query({ item: 'Book', amount: '200' })
+      .expect(200);
+      
+      expect(res.body).toMatchObject({shop: 'Shop Service',item:'Book',status:'Billed'})
+      expect(res.body.amount =='200' || res.body.amount == 150).toBeTruthy()
+  })
+});
